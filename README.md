@@ -1,4 +1,4 @@
-﻿# dsh-connect-test
+# dsh-connect-test
 
 DSH（DeepSeek Harness）接入 GitHub 的链路验证仓库，可随时删除。
 
