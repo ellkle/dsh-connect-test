@@ -1,0 +1,24 @@
+# 统一行尾，避免 Windows 上 core.autocrlf 造成的
+# "LF will be replaced by CRLF" 警告与跨平台 diff 噪音
+* text=auto eol=lf
+
+# PowerShell 脚本按文本处理，行尾 LF
+# 注意：UTF-8 BOM 不在本文件管辖范围内 —— .ps1 的 BOM 由脚本自身保证，
+# 原因见 docs/gotchas.md 第 2 条（PS 5.1 无 BOM 时按 ANSI 解码）。
+# 不要给 *.ps1 配 working-tree-encoding=UTF-8-BOM，那会改写已提交的字节。
+*.ps1 text eol=lf
+
+# 二进制：禁止任何行尾转换
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.ico   binary
+*.exe   binary
+*.dll   binary
+*.zip   binary
+*.gz    binary
+*.pdf   binary
+
+# GitHub 会把这些文件当纯文本渲染
+.github/workflows/* linguist-language=YAML
