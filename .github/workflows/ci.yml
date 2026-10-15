@@ -1,0 +1,75 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  verify:
+    # 用 windows 跑，因为要校验的正是 Windows / PowerShell 特有的坑
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 检查 github-connect.ps1 的 UTF-8 BOM
+        shell: pwsh
+        run: |
+          $bytes = [System.IO.File]::ReadAllBytes('./github-connect.ps1')
+          $bom = ($bytes[0] -eq 0xEF) -and ($bytes[1] -eq 0xBB) -and ($bytes[2] -eq 0xBF)
+          if (-not $bom) {
+            Write-Error "github-connect.ps1 缺少 UTF-8 BOM —— PowerShell 5.1 会按 ANSI 解码，中文注释会让脚本解析崩溃"
+            exit 1
+          }
+          Write-Host "BOM 检查通过"
+
+      - name: PowerShell 语法检查
+        shell: pwsh
+        run: |
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile(
+            (Resolve-Path './github-connect.ps1'), [ref]$null, [ref]$errors) | Out-Null
+          if ($errors.Count -gt 0) {
+            $errors | ForEach-Object { Write-Error "$($_.Extent.StartLineNumber): $($_.Message)" }
+            exit 1
+          }
+          Write-Host "语法检查通过（0 个错误）"
+
+      - name: 文档完整性检查
+        shell: pwsh
+        run: |
+          $required = @(
+            'README.md',
+            'github-connect.ps1',
+            'docs/setup-windows.md',
+            'docs/network-findings.md',
+            'docs/gotchas.md',
+            'docs/mcp-config.yml'
+          )
+          $missing = $required | Where-Object { -not (Test-Path $_) }
+          if ($missing) {
+            Write-Error "缺少文件: $($missing -join ', ')"
+            exit 1
+          }
+          Write-Host "文档完整（$($required.Count) 个文件）"
+
+      - name: 凭据泄漏检查
+        shell: pwsh
+        run: |
+          # 防止令牌被误提交进仓库
+          $patterns = 'ghp_[A-Za-z0-9]{36}', 'github_pat_[A-Za-z0-9_]{50,}', 'sk-[A-Za-z0-9]{32,}', 'AKIA[0-9A-Z]{16}'
+          $hits = @()
+          foreach ($f in (Get-ChildItem -Recurse -File -Exclude '*.yml' | Where-Object { $_.FullName -notmatch '\\\.git\\' })) {
+            foreach ($p in $patterns) {
+              if (Select-String -Path $f.FullName -Pattern $p -Quiet -ErrorAction SilentlyContinue) {
+                $hits += "$($f.Name) 命中 $p"
+              }
+            }
+          }
+          if ($hits) {
+            Write-Error "疑似凭据泄漏: $($hits -join '; ')"
+            exit 1
+          }
+          Write-Host "凭据泄漏检查通过"

@@ -1,0 +1,33 @@
+# ── 凭据：绝不允许进仓库 ──
+*.pat
+*.token
+*.pem
+*.key
+.env
+.env.*
+!.env.example
+.github_pat
+github_pat
+hosts.yml
+.git-credentials
+.netrc
+
+# ── 私钥 ──
+id_rsa
+id_ed25519
+id_ecdsa
+*.ppk
+
+# ── 编辑器 / 系统 ──
+.vscode/
+.idea/
+*.swp
+*~
+Thumbs.db
+Desktop.ini
+
+# ── 本地临时产物 ──
+tmp/
+temp/
+*.log
+*.tmp

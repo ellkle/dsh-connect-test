@@ -1,0 +1,52 @@
+# DSH 的 GitHub MCP 配置片段
+#
+# 用途：把远端 GitHub MCP 服务器注册成 DSH 的原生工具。
+#
+# 放置位置：%USERPROFILE%\.dsh\profiles\<profile>\cordis.patch.yml
+#           追加到该文件顶层 YAML 数组的末尾（注意缩进与同级条目一致）
+# 生效条件：重启 DSH —— 环境变量要重启进程才能读到
+
+- id: mcp-github
+  name: "@deepseek-ai/dsh-mcp-client"
+  config:
+    # 工具命名空间：最终工具名形如 mcp__github__create_pull_request
+    # 约束 [A-Za-z0-9_-]{1,32}，同一注册作用域内唯一
+    serverName: github
+
+    # 只支持 stdio 与 streamable-http 两种
+    transport: streamable-http
+
+    # GitHub 官方托管的远端 MCP 端点
+    url: https://api.githubcopilot.com/mcp/
+
+    # 令牌从环境变量读取，不写进本文件
+    # !!js 的求值方式是 new Function("ctx","expr",`with(ctx){return eval(expr)}`)
+    # eval 在 Node 全局作用域执行，所以 process 可达
+    headers:
+      Authorization: !!js '`Bearer ${process.env.GITHUB_PAT}`'
+
+    # 单次 tools/call 或资源请求的超时（毫秒）
+    toolCallTimeoutMs: 60000
+
+    # 关键：令牌缺失或端点连不上时只跳过这个服务器，不阻止 harness 启动
+    failOnStartupError: false
+
+# ─────────────────────────────────────────────────────────────
+# 其他可选字段（本配置未使用，按需添加）
+#
+#   maxInstructionBytes: 32768        服务器指令 UTF-8 字节上限
+#   reconnect.enabled: true           断线自动重连
+#   reconnect.initialDelayMs: 500     首次重连延迟，逐次翻倍
+#   reconnect.maxDelayMs: 30000       退避上限
+#   reconnect.maxAttempts: 10         连续失败上限，超出后移除该服务器工具
+#
+# stdio 传输（本地起进程，与 streamable-http 二选一）：
+#
+#   transport: stdio
+#   command: C:\path\to\github-mcp-server.exe
+#   args: ['stdio']
+#   env:
+#     GITHUB_PERSONAL_ACCESS_TOKEN: !!js process.env.GITHUB_PAT
+#
+# 本地 stdio 适合远端端点因授权策略不可用时兜底。
+# 官方服务器：https://github.com/github/github-mcp-server
